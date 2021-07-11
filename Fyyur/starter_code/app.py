@@ -96,9 +96,9 @@ app.jinja_env.filters['datetime'] = format_datetime
 def index():
   return render_template('pages/home.html')
 
-
+#----------------------------------------------------------------------------#
 #  Venues
-#  ----------------------------------------------------------------
+#----------------------------------------------------------------------------#
 
 @app.route('/venues')
 def venues():
@@ -115,14 +115,16 @@ def venues():
                 "name": venue.name,
                 "num_upcoming_shows": len(db.session.query(Show).filter_by(id=venue.id).all()),
             })
-
         data.append({
           "city": city[0],
           "state": city_venue[0].state,
           "venues": venue_list,
         })
-
   return render_template('pages/venues.html', areas=data);
+
+#----------------------------------------------------------------------------#
+#  Venues search
+#----------------------------------------------------------------------------#
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -141,12 +143,15 @@ def search_venues():
       "name":name,
       "num_upcoming_shows": len(db.session.query(Show).filter_by(venue=id).all()),
       })
-
   response={
     "count": len(results),
     "data": data,
     }
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+
+#----------------------------------------------------------------------------#
+#  Venues id show
+#----------------------------------------------------------------------------#
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
@@ -180,17 +185,16 @@ def show_venue(venue_id):
     "seeking_talent": venue.seeking_talent,
     "seeking_description": venue.seeking_description,
     "image_link": venue.image_link,
-
     "past_shows": past_show,
     "upcoming_shows": upcoming_show,
     "past_shows_count": len(past_show),
     "upcoming_shows_count": len(upcoming_show),
   }
-
   return render_template('pages/show_venue.html', venue=data)
 
+#----------------------------------------------------------------------------#
 #  Create Venue
-#  ----------------------------------------------------------------
+#----------------------------------------------------------------------------#
 
 @app.route('/venues/create', methods=['GET'])
 def create_venue_form():
@@ -226,6 +230,10 @@ def create_venue_submission():
       db.session.close()
   return render_template('pages/home.html')
 
+#----------------------------------------------------------------------------#
+#  Venues Dalete
+#----------------------------------------------------------------------------#
+
 @app.route('/venues/<venue_id>', methods=['POST'])
 def delete_venue(venue_id):
   venue = Venue.query.filter_by(id=venue_id)
@@ -243,6 +251,10 @@ def delete_venue(venue_id):
     db.session.close()
   return render_template('pages/home.html')
 
+#----------------------------------------------------------------------------#
+#  Artist Dalete
+#----------------------------------------------------------------------------#
+
 @app.route('/artists/<artist_id>', methods=['POST'])
 def delete_artist(artist_id):
   artist = Artist.query.filter_by(id=artist_id)
@@ -258,13 +270,14 @@ def delete_artist(artist_id):
     db.session.close()
   return render_template('pages/home.html')
 
-
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepag
   #Both done, I also created a delete Artist button
 
-#  Artists
-#  ----------------------------------------------------------------
+#----------------------------------------------------------------------------#
+#  Artist
+#----------------------------------------------------------------------------#
+
 @app.route('/artists')
 def artists():
   # TODO: replace with real data returned from querying the database
@@ -276,6 +289,10 @@ def artists():
         "name": artist.name,
       })
   return render_template('pages/artists.html', artists=data)
+
+#----------------------------------------------------------------------------#
+#  Artist Search
+#----------------------------------------------------------------------------#
 
 @app.route('/artists/search', methods=['POST'])
 def search_artists():
@@ -293,13 +310,15 @@ def search_artists():
       "name":result[0],
       "num_upcoming_shows": len(db.session.query(Show).filter_by(artist=id).all()),
       })
-
   response={
     "count": len(results),
     "data": data,
     }
-
   return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
+
+#----------------------------------------------------------------------------#
+#  Artist id show
+#----------------------------------------------------------------------------#
 
 @app.route('/artists/<int:artist_id>')
 def show_artist(artist_id):
@@ -320,7 +339,6 @@ def show_artist(artist_id):
           past_show.append(data_show)
       else:
           upcoming_show.append(data_show)
-
   data={
     "id": artist.id,
     "name": artist.name,
@@ -338,11 +356,12 @@ def show_artist(artist_id):
     "past_shows_count": len(past_show),
     "upcoming_shows_count": len(upcoming_show),
     }
-
   return render_template('pages/show_artist.html', artist=data)
 
-#  Update
-#  ----------------------------------------------------------------
+#----------------------------------------------------------------------------#
+#  Artist Update
+#----------------------------------------------------------------------------#
+
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
   # TODO: populate form with fields from artist with ID <artist_id>
@@ -381,6 +400,10 @@ def edit_artist_submission(artist_id):
   db.session.commit()
 
   return redirect(url_for('show_artist', artist_id=artist_id))
+
+#----------------------------------------------------------------------------#
+#  Venue Update
+#----------------------------------------------------------------------------#
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
@@ -422,9 +445,9 @@ def edit_venue_submission(venue_id):
   db.session.commit()
 
   return redirect(url_for('show_venue', venue_id=venue_id))
-
+#----------------------------------------------------------------------------#
 #  Create Artist
-#  ----------------------------------------------------------------
+#----------------------------------------------------------------------------#
 
 @app.route('/artists/create', methods=['GET'])
 def create_artist_form():
@@ -462,8 +485,9 @@ def create_artist_submission():
   return render_template('pages/home.html')
 
 
-#  Shows
-#  ----------------------------------------------------------------
+#----------------------------------------------------------------------------#
+#  Show
+#----------------------------------------------------------------------------#
 
 @app.route('/shows')
 def shows():
@@ -485,6 +509,10 @@ def shows():
           })
 
   return render_template('pages/shows.html', shows=data)
+
+#----------------------------------------------------------------------------#
+#  Show Create
+#----------------------------------------------------------------------------#
 
 @app.route('/shows/create')
 def create_shows():
@@ -512,6 +540,10 @@ def create_show_submission():
   finally:
       db.session.close()
   return render_template('pages/home.html')
+
+#----------------------------------------------------------------------------#
+# Error handle
+#----------------------------------------------------------------------------#
 
 @app.errorhandler(404)
 def not_found_error(error):
