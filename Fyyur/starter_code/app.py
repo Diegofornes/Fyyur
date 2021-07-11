@@ -106,20 +106,20 @@ def venues():
   #       num_shows should be aggregated based on number of upcoming shows per venue.
   data=[]
   cityes = db.session.query(Venue.city).group_by(Venue.city).order_by(Venue.city).all()
-  for cty in (cityes):
-        city_ven= Venue.query.filter_by(city=cty[0]).all()
-        ven_list = []
-        for ven in city_ven:
-            ven_list.append({
-                "id": ven.id,
-                "name": ven.name,
-                "num_upcoming_shows": len(db.session.query(Show).filter_by(id=ven.id).all()),
+  for city in (cityes):
+        city_venue= Venue.query.filter_by(city=city[0]).all()
+        venue_list = []
+        for venue in city_ven:
+            venue_list.append({
+                "id": venue.id,
+                "name": venue.name,
+                "num_upcoming_shows": len(db.session.query(Show).filter_by(id=venue.id).all()),
             })
 
         data.append({
-          "city": cty[0],
-          "state": city_ven[0].state,
-          "venues": ven_list,
+          "city": city[0],
+          "state": city_venue[0].state,
+          "venues": venue_list,
         })
 
   return render_template('pages/venues.html', areas=data);
