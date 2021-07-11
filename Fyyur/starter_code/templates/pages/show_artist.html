@@ -72,7 +72,15 @@
 	</div>
 </section>
 
-<a href="/artists/{{ artist.id }}/edit"><button class="btn btn-primary btn-lg">Edit</button></a>
+<span style="float: left">
+	<a href="/artists/{{ artist.id }}/edit"><button class="btn btn-primary btn-lg">Edit</button></a>
+</span>
+<span style="float: left;">
+	<form style="margin: 0px 15px;" action="/artists/{{ artist.id }}" method="POST" >
+		<button class="btn btn-default btn-lg">Delete Artist</button>
+	</form>
+</span>
+
 
 {% endblock %}
 
