@@ -14,6 +14,7 @@ from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
 import sys
+from class_init import Venue, Artist, Show
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -24,55 +25,9 @@ app.config.from_object('config')
 db = SQLAlchemy(app)
 
 # TODO: connect to a local postgresql database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:admin@localhost:5432/fyyur'
+app.config['SQLALCHEMY_DATABASE_URI']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 migrate = Migrate(app, db)
-#----------------------------------------------------------------------------#
-# Models.
-#----------------------------------------------------------------------------#
-
-
-class Venue(db.Model):
-    __tablename__ = 'venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    genres = db.Column(db.ARRAY(db.String), nullable=False)
-    phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean, nullable=False, default=False)
-    seeking_description = db.Column(db.String(700))
-
-
-class Artist(db.Model):
-    __tablename__ = 'artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.ARRAY(db.String), nullable=False)
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
-    seeking_description = db.Column(db.String(700))
-
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
-
-class Show(db.Model):
-    __tablename__ = 'show'
-    id = db.Column(db.Integer, primary_key=True)
-    start_time = db.Column(db.DateTime)
-    venue = db.Column(db.Integer, db.ForeignKey('venue.id', ondelete='CASCADE'), nullable=False)
-    artist = db.Column(db.Integer, db.ForeignKey('artist.id'), nullable=False)
-
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -109,12 +64,18 @@ def venues():
   for city in (cityes):
         city_venue= Venue.query.filter_by(city=city[0]).all()
         venue_list = []
-        for venue in city_ven:
-            venue_list.append({
+        for venue in city_venue:
+           upcoming_shows = (
+             Show.query.join(Venue, Venue.id==Show.venue)
+             .filter(Venue.id==venue.id)
+             .filter(Show.start_time>=datetime.now())
+             .all()
+             )
+           venue_list.append({
                 "id": venue.id,
                 "name": venue.name,
-                "num_upcoming_shows": len(db.session.query(Show).filter_by(id=venue.id).all()),
-            })
+                "num_upcoming_shows": len(upcoming_shows),
+           })
         data.append({
           "city": city[0],
           "state": city_venue[0].state,
@@ -131,20 +92,22 @@ def search_venues():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-  venues = db.session.query(Venue.name).all()
   search = request.form.get('search_term')
-  results = [i for i in venues if search in i[0]]
-  data=[]
-  for result in results:
-      name = result[0]
-      id = db.session.query(Venue.id).filter_by(name=name).first()[0]
+  venues = Venue.query.filter(Venue.name.ilike('%'+search+'%')).all()
+  for venue in venues:
+      upcoming_shows = (
+        Show.query.join(Venue, Venue.id==Show.venue)
+        .filter(Venue.id==venue.id)
+        .filter(Show.start_time>=datetime.now())
+        .all()
+        )
       data.append({
-      "id":id,
-      "name":name,
-      "num_upcoming_shows": len(db.session.query(Show).filter_by(venue=id).all()),
+      "id":venue.id,
+      "name":venue.name,
+      "num_upcoming_shows": len(upcoming_shows),
       })
   response={
-    "count": len(results),
+    "count": len(venues),
     "data": data,
     }
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
@@ -158,7 +121,11 @@ def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
   venue = Venue.query.get(venue_id)
-  shows = Show.query.filter_by(venue=venue_id).all()
+  shows = (
+            Show.query.join(Venue, Venue.id==Show.venue)
+            .filter(Venue.id==venue_id)
+            .all()
+            )
   past_show = []
   upcoming_show = []
   for show in shows:
@@ -178,7 +145,7 @@ def show_venue(venue_id):
     "genres": venue.genres,
     "address": venue.address,
     "city": venue.city,
-    "state": venue.city,
+    "state": venue.state,
     "phone": venue.phone,
     "website": venue.website_link,
     "facebook_link": venue.facebook_link,
@@ -299,19 +266,22 @@ def search_artists():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
   # search for "band" should return "The Wild Sax Band".
-  artists = db.session.query(Artist.name).all()
   search = request.form.get('search_term')
-  results = [i for i in artists if search in i[0]]
-  data=[]
-  for result in results:
-      id=db.session.query(Artist.id).filter_by(name=result[0]).all()[0][0]
+  artists = Artist.query.filter(Artist.name.ilike('%'+search+'%')).all()
+  for artist in artists:
+      upcoming_shows = (
+        Show.query.join(Artist, Artist.id==Show.artist)
+        .filter(artist.id==artist.id)
+        .filter(Show.start_time>=datetime.now())
+        .all()
+        )
       data.append({
-      "id":id,
-      "name":result[0],
-      "num_upcoming_shows": len(db.session.query(Show).filter_by(artist=id).all()),
+      "id":artist.id,
+      "name":artist.name,
+      "num_upcoming_shows": len(upcoming_shows),
       })
   response={
-    "count": len(results),
+    "count": len(artists),
     "data": data,
     }
   return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
@@ -344,7 +314,7 @@ def show_artist(artist_id):
     "name": artist.name,
     "genres": artist.genres,
     "city": artist.city,
-    "state": artist.city,
+    "state": artist.state,
     "phone": artist.phone,
     "website": artist.website_link,
     "facebook_link": artist.facebook_link,
@@ -394,7 +364,7 @@ def edit_artist_submission(artist_id):
   artist.phone = request.form.get('phone')
   artist.website_link = request.form.get('website')
   artist.facebook_link = request.form.get('facebook_link')
-  artist.seeking_venue = True if request.form.get('seeking_venue') in request.form else False
+  artist.seeking_venue = True if 'seeking_venue' in request.form else False
   artist.seeking_description = request.form.get('seeking_description')
   artist.image_link = request.form.get('image_link')
   db.session.commit()
@@ -416,7 +386,7 @@ def edit_venue(venue_id):
     "genres": venue.genres,
     "address": venue.address,
     "city": venue.city,
-    "state": venue.city,
+    "state": venue.state,
     "phone": venue.phone,
     "website": venue.website_link,
     "facebook_link": venue.facebook_link,
@@ -439,7 +409,7 @@ def edit_venue_submission(venue_id):
   venue.phone = request.form.get('phone')
   venue.website_link = request.form.get('website')
   venue.facebook_link = request.form.get('facebook_link')
-  venue.seeking_talent = True if request.form.get('seeking_talent') in request.form else False
+  venue.seeking_talent = True if 'seeking_venue' in request.form else False
   venue.seeking_description = request.form.get('seeking_description')
   venue.image_link = request.form.get('image_link')
   db.session.commit()
@@ -570,7 +540,7 @@ if not app.debug:
 
 # Default port:
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
 
 # Or specify port manually:
 '''
